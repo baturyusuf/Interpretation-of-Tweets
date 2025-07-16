@@ -1,0 +1,23 @@
+# -------- Sanal ortam --------
+venv/
+.env/
+.venv/
+
+# -------- IDE / Editor dosyaları --------
+.idea/
+.vscode/
+
+# -------- Derlenmiş Python çıktıları --------
+__pycache__/
+*.py[cod]
+*.so
+*.pyd
+
+# -------- Paket / dağıtım artıkları --------
+*.egg-info/
+dist/
+build/
+
+# -------- Sistem dosyaları --------
+.DS_Store
+Thumbs.db
