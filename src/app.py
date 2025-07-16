@@ -1,12 +1,3 @@
-"""Streamlit Tweet Viewer – v6.1 (Seçim Tutarlılığı)
-====================================================
-* **Seçim hatası düzeltildi:** `st_aggrid` bazı sürümlerde `selected_rows`’u
-  DataFrame olarak döndürüyor. Artık hem **list** hem **DataFrame** senaryosu
-  işlendi ve seçilen tweet’in indeksi `int()`’e dönüştürülerek `df.loc` ile
-  uyumlu hale getirildi.
-* Hiçbir diğer işlev değişmedi.
-"""
-
 from __future__ import annotations
 import io
 import os
@@ -41,8 +32,6 @@ UI_LABELS: Dict[str, str] = {
 HIER_COLS = ["Determination of Events", "Tematik Analiz", "Kabiliyet"]
 SITE_VISIT_COL = "Site Visit"
 BINARY_META_COL = "Binary"
-
-# ────────────────────────────── Yardımcılar ──────────────────────────
 
 def is_missing(val) -> bool:
     if pd.isna(val):
@@ -118,7 +107,7 @@ with st.sidebar:
             data = json.load(f)
 
         for category, content in data.items():
-            with st.expander(f"📁 {category}", expanded=False):  # 👈 tıklanabilir başlık kutusu
+            with st.expander(f"📁 {category}", expanded=False):
                 lines = content.strip().split("\n")
 
                 grouped = {}
@@ -189,13 +178,10 @@ with right:
         val = row[col]
         if is_missing(val):
             btn_key = f"ai_{col}_{row.name}"
-            print(st.session_state.df.head())
             if container.button("Yapay Zeka ile Üret", key=btn_key):
                 generated = generate_tag()
                 st.session_state.df.at[row.name, col] = generated
                 st.rerun()
-
-                print(st.session_state.df.head())
 
             val = st.session_state.df.at[row.name, col]
 
