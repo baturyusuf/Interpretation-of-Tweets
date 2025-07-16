@@ -11,9 +11,9 @@ from __future__ import annotations
 import io
 import os
 import re
-import random
-import string
 from typing import Dict, List, Tuple, Union
+from ai_manager import generate_tag
+import json
 
 import pandas as pd
 import streamlit as st
@@ -23,6 +23,9 @@ st.set_page_config(page_title="Tweet Viewer", layout="wide", page_icon="🐦")
 st.title("🐦 Tweet İçeriği İnceleyici")
 
 DEFAULT_XLSX_PATH = "otomatik_kodlama_sonuclari.xlsx"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TAGS_PATH = os.path.abspath(os.path.join(BASE_DIR, '..', 'tags.json'))
+
 
 UI_LABELS: Dict[str, str] = {
     "Belge": "Belge (Sıra No.)",
@@ -47,15 +50,9 @@ def is_missing(val) -> bool:
     s = str(val).strip()
     return s == "" or s == "//" or s.lower() in {"na", "nan", "null"}
 
-
-def random_word(k: int = 6) -> str:
-    return "".join(random.choices(string.ascii_lowercase, k=k))
-
-
 def parse_binary_field(text: str) -> List[Tuple[str, str]]:
     pairs = re.findall(r"([^:]+):\s*([01])", text)
     return [(k.strip(), "Evet" if v == "1" else "Hayır") for k, v in pairs]
-
 
 def load_dataframe(uploaded_file):
     if uploaded_file is not None:
@@ -87,17 +84,14 @@ def parse_site_visit(val: str) -> str:
     parts = [p.strip() for p in val.split(">") if p.strip()]
     return parts[-1] if parts else "Bilinmiyor"
 
-# ───────────────────────────── Kenar Çubuğu ─────────────────────────
 with st.sidebar:
     st.header("Excel Dosyası Yükle")
     uploaded_file = st.file_uploader("Tweet verisini içeren Excel dosyası", type=["xlsx"])
 
-    # session_state içinde df yoksa mutlaka yükle
     if "df" not in st.session_state:
         st.session_state.df = load_dataframe(uploaded_file)
         st.session_state.uploaded_file = uploaded_file
 
-    # eğer yeni bir dosya atandıysa yeniden yükle
     elif uploaded_file is not None and uploaded_file != st.session_state.uploaded_file:
         st.session_state.df = load_dataframe(uploaded_file)
         st.session_state.uploaded_file = uploaded_file
@@ -106,23 +100,41 @@ with st.sidebar:
         st.markdown("---")
         df_to_save = st.session_state.df
 
-        # Bellekte Excel dosyasını oluştur
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
             df_to_save.to_excel(writer, index=False, sheet_name="Sheet1")
         buffer.seek(0)
 
-        # İndirme butonu
         st.download_button(
             label="Excel Olarak İndir",
             data=buffer,
             file_name="tweet_verisi.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+        st.markdown("---")
 
+        st.title("Başlıklar")
+        with open(TAGS_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
 
+        for category, content in data.items():
+            with st.expander(f"📁 {category}", expanded=False):  # 👈 tıklanabilir başlık kutusu
+                lines = content.strip().split("\n")
 
-# ─────────────────────────────── Ana Düzen ──────────────────────────
+                grouped = {}
+                for line in lines:
+                    if ">" in line:
+                        main, sub = [part.strip() for part in line.split(">", 1)]
+                        grouped.setdefault(main, []).append(sub)
+
+                for main, subs in grouped.items():
+                    st.markdown(
+                        f"<div style='font-size:18px; font-weight: bold; margin-top:10px;'>• {main}</div>",
+                        unsafe_allow_html=True
+                    )
+                    for sub in subs:
+                        st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;◦ {sub}")
+
 left, right = st.columns([0.38, 0.62], gap="small")
 
 with left:
@@ -179,7 +191,7 @@ with right:
             btn_key = f"ai_{col}_{row.name}"
             print(st.session_state.df.head())
             if container.button("Yapay Zeka ile Üret", key=btn_key):
-                generated = random_word()
+                generated = generate_tag()
                 st.session_state.df.at[row.name, col] = generated
                 st.rerun()
 
